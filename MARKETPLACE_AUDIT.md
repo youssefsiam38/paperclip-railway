@@ -40,7 +40,7 @@
   bypass attempts, invitation flow, instance-admin powers, attachments stored in RustFS (not on the app volume), a `process` agent calling the API with its
   injected key, the bundled agent CLIs, restart idempotency, `closed` mode.
 - `tests/persistence.sh` (6): company, attachment and owner survive recreating every service.
-- `tests/railway-smoke.sh`: the same flows over HTTPS on a live deploy, plus `--verify` after a redeploy.
+- `tests/railway-smoke.sh` (24, `--verify` 8): the same flows over HTTPS. Run on a clean-room deploy of the template, again after redeploying all three services, and on a deploy of the published code (2026-10-01).
 
 Not covered: an LLM-backed agent (Claude Code, Codex) against a real provider; the UI was checked in a browser only
 as far as the sign-in page (no password typing by the tester).

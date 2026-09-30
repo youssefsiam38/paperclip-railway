@@ -4,9 +4,9 @@ The template's exact configuration. Reproduce it from this file if it ever has t
 
 | | |
 |---|---|
-| Name | Paperclip |
-| Code | `paperclip-ai-teams` (`paperclip` is taken by another publisher) |
-| Template id | `88af349a-c864-46d2-859f-20f0165431a0` |
+| Name | Paperclip AI Teams |
+| Code | `paperclip-ai-teams` (`paperclip` is taken; the code is the slug of the name, which comes from the skeleton project name) |
+| Template id | `ca295d6a-a952-40a8-a05a-79e0c4e706d0` |
 | Deploy URL | https://railway.com/deploy/paperclip-ai-teams |
 | Category | AI/ML |
 | Card description | Run AI agent teams (Claude Code, Codex). Owner seeded, invite-only sign-up. |

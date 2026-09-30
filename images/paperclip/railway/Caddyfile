@@ -1,0 +1,42 @@
+# Public front door. Paperclip listens on loopback only; everything reaches it through here.
+# The one thing this adds is the sign-up gate: every Better Auth sign-up request is checked by signup-gate.mjs
+# (PAPERCLIP_SIGNUP_MODE) before it is proxied. Everything else, including WebSockets and SSE, passes through.
+{
+	admin off
+	auto_https off
+	persist_config off
+	servers {
+		# Railway's edge reaches the container from private/CGNAT ranges; trust its X-Forwarded-* headers only.
+		trusted_proxies static private_ranges 100.64.0.0/10
+		trusted_proxies_strict
+		client_ip_headers X-Forwarded-For
+	}
+	log {
+		output stderr
+		level WARN
+	}
+}
+
+# Better Auth rate-limits sign-in/sign-up per client IP, but only when X-Forwarded-For holds exactly one address
+# (it sets no trusted proxies). Caddy would append the edge's address, so hand Paperclip the resolved client IP alone;
+# otherwise every visitor shares one bucket and a single client can lock everyone out of sign-in.
+(to_paperclip) {
+	reverse_proxy 127.0.0.1:{$PAPERCLIP_INTERNAL_PORT} {
+		header_up X-Forwarded-For {client_ip}
+	}
+}
+
+:{$PORT} {
+	# The path matcher is case-insensitive and matches the unescaped path, so /API/Auth/Sign-Up%2Femail is covered.
+	@signup path /api/auth/sign-up*
+	handle @signup {
+		forward_auth 127.0.0.1:{$PAPERCLIP_GATE_PORT} {
+			uri /check
+		}
+		import to_paperclip
+	}
+
+	handle {
+		import to_paperclip
+	}
+}

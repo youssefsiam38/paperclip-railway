@@ -1,0 +1,9 @@
+.git
+test-output
+.github
+*.md
+assets
+marketplace
+tests
+licenses
+_audit

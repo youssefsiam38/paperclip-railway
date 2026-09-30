@@ -1,0 +1,63 @@
+# Local test topology. Mirrors the Railway service graph:
+#   db         -> PostgreSQL (own volume, private)
+#   paperclip  -> Paperclip + Caddy front door (wrapper image; owner seeded at start-up), /paperclip volume, public
+name: paperclip-railway-test
+
+networks:
+  default:
+    name: paperclip-railway-test
+
+services:
+  db:
+    image: postgres:18.2-alpine3.23@sha256:035b9ab53cfa147d7202b61f5f7782b939ae815b7d6bc81c96b7b42ff1fca950
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: paperclip
+      POSTGRES_PASSWORD: local-test-only-postgres-password
+      POSTGRES_DB: paperclip
+    volumes:
+      - pg:/var/lib/postgresql
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U paperclip -d paperclip']
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+  paperclip:
+    build:
+      context: .
+      dockerfile: images/paperclip/Dockerfile
+      args:
+        WRAPPER_VERSION: ${WRAPPER_VERSION:-0.0.0-local}
+        VCS_REF: ${VCS_REF:-local}
+    image: ${PAPERCLIP_RAILWAY_IMAGE:-paperclip-railway:local}
+    restart: unless-stopped
+    pids_limit: 2048
+    depends_on:
+      db: { condition: service_healthy }
+    environment:
+      DATABASE_URL: postgres://paperclip:local-test-only-postgres-password@db:5432/paperclip
+      # Not "localhost": Paperclip rewrites a loopback public URL to its own listen port. The tests resolve this
+      # name to 127.0.0.1 with curl --resolve.
+      PAPERCLIP_PUBLIC_URL: http://paperclip.test:${PAPERCLIP_TEST_PORT:-18100}
+      ADMIN_EMAIL: ${PAPERCLIP_TEST_ADMIN_EMAIL:-owner@example.com}
+      ADMIN_PASSWORD: ${PAPERCLIP_TEST_ADMIN_PASSWORD:-local-test-only-admin-password}
+      ADMIN_NAME: Test Owner
+      PAPERCLIP_SIGNUP_MODE: ${PAPERCLIP_TEST_SIGNUP_MODE:-invite-only}
+      BETTER_AUTH_SECRET: local-test-only-00112233445566778899aabbccddeeff00112233445566778899aabbcc
+      PAPERCLIP_AGENT_JWT_SECRET: local-test-only-ffeeddccbbaa99887766554433221100ffeeddccbbaa9988776655
+      PAPERCLIP_TOOL_ACTION_SIGNING_SECRET: local-test-only-0f1e2d3c4b5a69788796a5b4c3d2e1f00f1e2d3c4b5a697887
+      PAPERCLIP_SECRETS_MASTER_KEY: '00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff'
+      # Same port inside and out, and paperclip.test -> the container's own loopback, so agent processes reach
+      # PAPERCLIP_PUBLIC_URL through the front door exactly as they do on Railway.
+      PORT: ${PAPERCLIP_TEST_PORT:-18100}
+    extra_hosts:
+      - 'paperclip.test:127.0.0.1'
+    ports:
+      - '127.0.0.1:${PAPERCLIP_TEST_PORT:-18100}:${PAPERCLIP_TEST_PORT:-18100}'
+    volumes:
+      - data:/paperclip
+
+volumes:
+  pg:
+  data:

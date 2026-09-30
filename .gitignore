@@ -1,0 +1,15 @@
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+/test-output/
+/.test-volumes/
+*.log
+.DS_Store
+.idea/
+.vscode/
+*.swp
+.railway/
+__pycache__/
+*.pyc

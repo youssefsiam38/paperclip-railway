@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC2015
 # Persistence: data written before `compose down` (volumes kept) is still there after `compose up`, the owner can
-# still sign in, and the owner bootstrap does not run again. Mirrors a Railway redeploy of both services.
+# still sign in, and the owner bootstrap does not run again. Mirrors a Railway redeploy of every service.
 set -euo pipefail
 REPO_ROOT=$(cd "$(dirname "$0")/.." && pwd); export REPO_ROOT
 # shellcheck source=tests/lib.sh
@@ -24,7 +24,7 @@ req "$OWNER" POST "/api/companies/$CID/issues/$IID/attachments" "" -F "file=@$TE
 assert_eq "upload an attachment" "201" "$CODE"
 ATT=$(jq -r .id <<<"$BODY")
 
-section "recreate both services, keep volumes"
+section "recreate every service, keep volumes"
 compose down >/dev/null 2>&1
 compose up -d >/dev/null 2>&1 || die "compose up failed"
 wait_for_code "$APP_URL/api/health" 200 || die "Paperclip never came back"

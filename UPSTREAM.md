@@ -28,6 +28,16 @@ Check these on every bump (the smoke test exercises all of them):
 | Server command `node --import ./server/node_modules/tsx/dist/loader.mjs server/dist/index.js` in `/app` | `Dockerfile` |
 | `postgres` npm package resolvable from `/app/packages/db` | `packages/db/package.json` |
 
+## RustFS
+
+- Project: https://github.com/rustfs/rustfs, licence Apache-2.0 (`licenses/RUSTFS-LICENSE`)
+- Pinned: `docker.io/rustfs/rustfs:1.0.0` (latest stable; `1.0.1-preview.*` are prereleases)
+  - digest `sha256:8cc9801755448b71a786705ce76692c77e14936cccd87cf2fc31842e58f4d1ff`
+- Wrapper `images/storage/`: runs as root only to prepare `/data/rustfs` on the Railway volume, then `su-exec rustfs`;
+  S3 API on `[::]:9000` (Railway's private network is IPv6), console off, default credentials refused.
+- Why not MinIO: the community repository was archived ("no longer maintained", last release 2025-10-15) and the
+  official images were withdrawn from Docker Hub and Quay.
+
 ## Caddy
 
 - Image: `caddy:2.10.2` (official), binary copied into the wrapper

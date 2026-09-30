@@ -31,6 +31,7 @@ Paperclip image, pinned by digest and unmodified.
 ## Dependencies for Paperclip Hosting
 
 - PostgreSQL: included, on Railway's private network
+- RustFS (S3-compatible object storage) for uploads: included, private
 - An AI provider credential for your agents (optional at deploy time): an Anthropic key or Claude subscription
   token, an OpenAI key, or a Gemini key. You can also add keys later, per agent, inside Paperclip.
 
@@ -52,11 +53,13 @@ behaviour).
 
 **What's configured for you:** `authenticated` + `public` mode, the public URL from your Railway domain, four
 generated signing and encryption secrets, database migrations on every start, per-client sign-in rate limiting
-behind Railway's proxy, a volume at `/paperclip` for files, workspaces and logs, and a private PostgreSQL. Paperclip
+behind Railway's proxy, a private RustFS bucket for uploads, a volume at `/paperclip` for agent workspaces and
+logs, and a private PostgreSQL. Paperclip
 listens on loopback behind a small Caddy front door that only adds the sign-up check.
 
 **Agents:** agents run inside the Paperclip container. Railway has no nested containers, so there is no per-agent
-sandbox; treat the ability to run agents like shell access to the service.
+sandbox, and Paperclip passes its server environment on to agents; treat the ability to run agents like shell
+access to the service.
 
 **Custom domain:** add it in Railway, then set `PAPERCLIP_PUBLIC_URL` to `https://your.domain`.
 

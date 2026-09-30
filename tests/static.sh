@@ -11,7 +11,9 @@ section "syntax"
 for f in tests/*.sh images/paperclip/railway/supervisor.sh; do
   if bash -n "$f" 2>/dev/null; then pass "parses: $f"; else fail "syntax error: $f"; fi
 done
-if sh -n images/paperclip/railway/start.sh; then pass "parses: start.sh (POSIX sh)"; else fail "syntax error: start.sh"; fi
+for f in images/paperclip/railway/start.sh images/storage/entrypoint.sh; do
+  if sh -n "$f"; then pass "parses: $f (POSIX sh)"; else fail "syntax error: $f"; fi
+done
 if command -v node >/dev/null; then
   for f in images/paperclip/railway/*.mjs; do
     if node --check "$f" 2>/dev/null; then pass "parses: $f"; else fail "syntax error: $f"; fi
@@ -23,7 +25,7 @@ fi
 section "shellcheck"
 if command -v shellcheck >/dev/null; then
   if shellcheck -x -s bash tests/*.sh images/paperclip/railway/supervisor.sh; then pass "shellcheck bash"; else fail "shellcheck bash"; fi
-  if shellcheck -s sh images/paperclip/railway/start.sh; then pass "shellcheck start.sh"; else fail "shellcheck start.sh"; fi
+  if shellcheck -s sh images/paperclip/railway/start.sh images/storage/entrypoint.sh; then pass "shellcheck sh"; else fail "shellcheck sh"; fi
 else
   echo "  SKIP  shellcheck not installed"
 fi
@@ -31,19 +33,24 @@ fi
 section "compose"
 if docker compose -f compose.yaml config -q; then pass "compose config"; else fail "compose config"; fi
 cfg=$(docker compose -f compose.yaml config --format json)
-assert_eq "two services" "db paperclip" "$(jq -r '[.services | keys[]] | sort | join(" ")' <<<"$cfg")"
+assert_eq "three services" "db paperclip storage" "$(jq -r '[.services | keys[]] | sort | join(" ")' <<<"$cfg")"
 assert_eq "only paperclip publishes a port" "paperclip" "$(jq -r '[.services | to_entries[] | select(.value.ports) | .key] | join(" ")' <<<"$cfg")"
 assert_eq "the port binds to loopback" "127.0.0.1" "$(jq -r '[.services.paperclip.ports[]? | .host_ip] | join(" ")' <<<"$cfg")"
 assert_eq "the published port is the front door (\$PORT)" "$(jq -r '.services.paperclip.environment.PORT' <<<"$cfg")" "$(jq -r '[.services.paperclip.ports[]? | .target] | join(" ")' <<<"$cfg")"
 assert_eq "the paperclip data volume is mounted" "/paperclip" "$(jq -r '[.services.paperclip.volumes[]? | .target] | join(" ")' <<<"$cfg")"
+assert_eq "the storage volume is mounted" "/data" "$(jq -r '[.services.storage.volumes[]? | .target] | join(" ")' <<<"$cfg")"
+assert_eq "uploads go to S3 storage" "s3" "$(jq -r '.services.paperclip.environment.PAPERCLIP_STORAGE_PROVIDER' <<<"$cfg")"
+assert_eq "the S3 client uses path-style URLs" "true" "$(jq -r '.services.paperclip.environment.PAPERCLIP_STORAGE_S3_FORCE_PATH_STYLE' <<<"$cfg")"
 assert_eq "the database volume is mounted at the parent dir" "/var/lib/postgresql" "$(jq -r '[.services.db.volumes[]? | .target] | join(" ")' <<<"$cfg")"
 assert_contains "postgres is pinned by tag and digest" '@sha256:[0-9a-f]\{64\}$' "$(jq -r '.services.db.image' <<<"$cfg")"
 assert_contains "the DB connection string is set" '^postgres://' "$(jq -r '.services.paperclip.environment.DATABASE_URL' <<<"$cfg")"
+assert_eq "the storage service publishes no port" "" "$(jq -r '[.services.storage.ports[]?] | length | select(. > 0)' <<<"$cfg")"
 assert_contains "the compose admin password is a placeholder" 'local-test-only' "$(jq -r '.services.paperclip.environment.ADMIN_PASSWORD' <<<"$cfg")"
 
 section "image"
 df=images/paperclip/Dockerfile
 assert_contains "paperclip base pinned by digest" '^ARG PAPERCLIP_IMAGE=ghcr.io/paperclipai/paperclip:.*@sha256:[0-9a-f]\{64\}$' "$(grep '^ARG PAPERCLIP_IMAGE=' "$df")"
+assert_contains "rustfs pinned by digest" '^ARG RUSTFS_IMAGE=.*@sha256:[0-9a-f]\{64\}$' "$(grep '^ARG RUSTFS_IMAGE=' images/storage/Dockerfile)"
 assert_contains "caddy pinned by digest" '^ARG CADDY_IMAGE=.*@sha256:[0-9a-f]\{64\}$' "$(grep '^ARG CADDY_IMAGE=' "$df")"
 assert_contains "authenticated mode" 'PAPERCLIP_DEPLOYMENT_MODE=authenticated' "$(cat "$df")"
 assert_contains "public exposure (browser claim disabled)" 'PAPERCLIP_DEPLOYMENT_EXPOSURE=public' "$(cat "$df")"

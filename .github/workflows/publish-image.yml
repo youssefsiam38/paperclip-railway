@@ -40,16 +40,19 @@ jobs:
           WRAPPER_VERSION: ${{ steps.ver.outputs.version }}
           VCS_REF: ${{ github.sha }}
           PAPERCLIP_RAILWAY_IMAGE: paperclip-railway:candidate
+          PAPERCLIP_RAILWAY_STORAGE_IMAGE: paperclip-railway-storage:candidate
         run: docker compose build --pull
 
       - name: Smoke tests against the candidate
         env:
           PAPERCLIP_RAILWAY_IMAGE: paperclip-railway:candidate
+          PAPERCLIP_RAILWAY_STORAGE_IMAGE: paperclip-railway-storage:candidate
         run: tests/smoke.sh
 
       - name: Persistence tests against the candidate
         env:
           PAPERCLIP_RAILWAY_IMAGE: paperclip-railway:candidate
+          PAPERCLIP_RAILWAY_STORAGE_IMAGE: paperclip-railway-storage:candidate
         run: tests/persistence.sh
 
       - name: Container logs on failure
@@ -67,16 +70,20 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Push the tested image
+      - name: Push the tested images
         env:
           VERSION: ${{ steps.ver.outputs.version }}
         run: |
           set -euo pipefail
           tags=("$VERSION")
           if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then tags+=("${VERSION%.*}" latest); fi
-          for t in "${tags[@]}"; do
-            docker tag paperclip-railway:candidate "$IMAGE:$t"
-            docker push -q "$IMAGE:$t"
+          echo "### Published images" >> "$GITHUB_STEP_SUMMARY"
+          for pair in "paperclip-railway:candidate=$IMAGE" "paperclip-railway-storage:candidate=$IMAGE-storage"; do
+            src=${pair%%=*}; dst=${pair#*=}
+            for t in "${tags[@]}"; do
+              docker tag "$src" "$dst:$t"
+              docker push -q "$dst:$t"
+            done
+            digest=$(docker image inspect --format '{{index .RepoDigests 0}}' "$dst:$VERSION")
+            echo "- \`$digest\`" >> "$GITHUB_STEP_SUMMARY"
           done
-          digest=$(docker image inspect --format '{{index .RepoDigests 0}}' "$IMAGE:$VERSION")
-          { echo "### Published image"; echo; echo "\`$digest\`"; } >> "$GITHUB_STEP_SUMMARY"

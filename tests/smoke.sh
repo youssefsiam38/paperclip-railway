@@ -22,6 +22,7 @@ pass "front door answers /api/health"
 logs=$(compose logs --no-color paperclip 2>&1)
 assert_contains "the owner was created at start-up" "is the owner and instance admin" "$logs"
 assert_not_contains "the owner password never reaches the logs" "$OWNER_PASSWORD" "$logs"
+assert_contains "the uploads bucket was created in RustFS" 'created storage bucket "paperclip"' "$logs"
 assert_contains "the signup gate runs in invite-only mode" "signup gate listening on 127.0.0.1:3102 (mode invite-only)" "$logs"
 
 section "only the front door is reachable"
@@ -85,7 +86,7 @@ AGENT_TOKEN=$(invite_token_from "$BODY")
 sign_up Bot "bot-$(rand)@example.com" bot-password-12345 "$TEST_TMP/b.jar" "$APP_URL/invite/$AGENT_TOKEN"
 assert_eq "an agent-only invite cannot sign up a human" "403" "$CODE"
 
-section "attachments on the volume"
+section "attachments in object storage"
 req "$OWNER" POST "/api/companies/$CID/issues" '{"title":"Smoke issue"}'
 assert_eq "owner creates an issue" "201" "$CODE"
 IID=$(jq -r .id <<<"$BODY")
@@ -95,13 +96,15 @@ assert_eq "owner uploads an attachment" "201" "$CODE"
 ATT=$(jq -r .id <<<"$BODY")
 req "$OWNER" GET "/api/attachments/$ATT/content"
 assert_eq "the attachment downloads intact" "$(cat "$TEST_TMP/attachment.txt")" "$BODY"
-assert_contains "the file is stored on the /paperclip volume" "/paperclip/instances/default/data/storage/" \
-  "$(compose exec -T paperclip sh -c 'find /paperclip/instances/default/data/storage -type f -name "*attachment.txt"')"
+assert_contains "the file is stored in the RustFS bucket" "/data/rustfs/paperclip/" \
+  "$(compose exec -T storage sh -c 'find /data/rustfs/paperclip -name "*attachment.txt*" | head -1')"
+assert_eq "no upload lands on the app volume" "" \
+  "$(compose exec -T paperclip sh -c 'find /paperclip -path "*storage*" -name "*attachment.txt*" 2>/dev/null | head -1')"
 
 section "agent run"
 # A process agent that calls back into the Paperclip API with its injected short-lived key, through
 # PAPERCLIP_API_URL (the public URL, i.e. the front door): the same loop Claude Code or Codex agents use.
-script='curl -fsS -H "Authorization: Bearer $PAPERCLIP_API_KEY" "$PAPERCLIP_API_URL/api/agents/me" | grep -q "\"id\"" && echo agent-probe-ok'
+script='curl -fsS -H "Authorization: Bearer $PAPERCLIP_API_KEY" "$PAPERCLIP_API_URL/api/agents/me" | grep -q "\"id\"" && echo agent-probe-ok; [ -z "${ADMIN_PASSWORD:-}" ] && echo no-admin-password-in-agent-env'
 req "$OWNER" POST "/api/companies/$CID/agents" "$(jq -nc --arg s "$script" '{name:"Probe", role:"engineer", adapterType:"process", adapterConfig:{command:"sh", args:["-c",$s], timeoutSec:60}}')"
 assert_eq "owner hires a process agent" "201" "$CODE"
 AID=$(jq -r .id <<<"$BODY")
@@ -117,6 +120,7 @@ done
 assert_eq "the heartbeat run succeeds" "succeeded" "$st"
 req "$OWNER" GET "/api/heartbeat-runs/$RID/log"
 assert_contains "the agent reached the API with its own key" "agent-probe-ok" "$BODY"
+assert_contains "the owner's initial password is not in the agent environment" "no-admin-password-in-agent-env" "$BODY"
 for cli in claude codex opencode gemini; do
   if compose exec -T paperclip gosu node sh -c "command -v $cli" >/dev/null 2>&1; then pass "the $cli CLI is installed for local adapters"; else fail "the $cli CLI is missing"; fi
 done

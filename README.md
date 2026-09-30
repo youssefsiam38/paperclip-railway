@@ -12,7 +12,9 @@ What makes this template different from a bare `docker run`:
 - **Sign-up is invite-only.** Stock Paperclip lets anyone who finds the URL create an account. Here a new account
   can only be created from a live invitation link that an admin generated; invites still work normally.
 - **Internet-facing configuration.** `authenticated` + `public` mode, HTTPS public URL, four generated secrets,
-  per-client auth rate limiting behind Railway's proxy, PostgreSQL on the private network, data on a volume.
+  per-client auth rate limiting behind Railway's proxy, PostgreSQL on the private network.
+- **Uploads in bundled object storage.** Attachments and files go to a private RustFS (S3-compatible) service with
+  its own volume; agent workspaces, run logs and database backups stay on the app's volume.
 - **Official image, unmodified.** `ghcr.io/paperclipai/paperclip`, pinned by digest. The wrapper only adds a
   start-up script and a Caddy front door.
 
@@ -21,6 +23,7 @@ What makes this template different from a bare `docker run`:
 | Service | Image | Public | Volume |
 |---|---|---|---|
 | `paperclip` | `ghcr.io/youssefsiam38/paperclip-railway` (official Paperclip + Caddy) | yes, port 3100 | `/paperclip` |
+| `storage` | `ghcr.io/youssefsiam38/paperclip-railway-storage` (official RustFS, volume-ready) | no | `/data` |
 | `db` | `postgres:18.2-alpine3.23` | no | `/var/lib/postgresql` |
 
 ## After deploying
@@ -48,14 +51,17 @@ their account on that page.
 | `PAPERCLIP_PUBLIC_URL` | `https://${{RAILWAY_PUBLIC_DOMAIN}}` | Change it when you add a custom domain. |
 | `BETTER_AUTH_SECRET`, `PAPERCLIP_AGENT_JWT_SECRET`, `PAPERCLIP_TOOL_ACTION_SIGNING_SECRET` | generated | Changing them signs everyone out / invalidates agent tokens. |
 | `PAPERCLIP_SECRETS_MASTER_KEY` | generated | Encrypts stored secrets. **Never change it** after secrets are saved. |
+| `PAPERCLIP_STORAGE_*`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` | wired to `storage` | S3 settings for the bundled RustFS (bucket `paperclip`, created at start). |
+| `RUSTFS_ACCESS_KEY`, `RUSTFS_SECRET_KEY` (on `storage`) | generated | RustFS credentials; the app reads them by reference. |
 | `ANTHROPIC_API_KEY`, `CLAUDE_CODE_OAUTH_TOKEN`, `OPENAI_API_KEY`, `GEMINI_API_KEY` | unset | Optional agent credentials. |
 
 ## How agents run
 
 Paperclip runs local agents (Claude Code, Codex, OpenCode, Gemini CLI, shell commands) as processes **inside the
 `paperclip` container**, with workspaces on the `/paperclip` volume. Railway has no nested containers, so there is
-no per-agent sandbox: an agent can do anything the container can. Treat agent access like shell access to the
-service. Paperclip's remote sandbox plugins (Daytona, E2B, Modal, ...) are optional external services and are not
+no per-agent sandbox: an agent can do anything the container can, and Paperclip passes its server environment
+(database URL, auth secrets, storage keys, provider keys) on to agent processes. Treat agent access like shell
+access to the service. Paperclip's remote sandbox plugins (Daytona, E2B, Modal, ...) are optional external services and are not
 configured by this template. See `SECURITY.md`.
 
 ## Repository layout
@@ -80,5 +86,6 @@ add it to `/etc/hosts` to use a browser). Owner: `owner@example.com` / `local-te
 
 ## Licence
 
-The template's own files are MIT (`LICENSE`). Paperclip is MIT (`licenses/PAPERCLIP-LICENSE`); see
+The template's own files are MIT (`LICENSE`). Paperclip is MIT (`licenses/PAPERCLIP-LICENSE`), RustFS is
+Apache-2.0 (`licenses/RUSTFS-LICENSE`); see
 `THIRD_PARTY_NOTICES.md`.

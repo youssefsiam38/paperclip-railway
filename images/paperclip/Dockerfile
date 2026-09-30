@@ -11,6 +11,7 @@
 #                       through Paperclip's own bootstrap-invite flow (the same one `paperclipai auth bootstrap-ceo`
 #                       uses)
 #   signup-gate.mjs     Caddy forward_auth target: sign-up is allowed only from a live invitation link
+#   ensure-bucket.mjs   with S3 storage (the bundled RustFS), creates the uploads bucket before Paperclip starts
 #   Caddyfile           the public front door
 #
 # Not affiliated with the Paperclip project.

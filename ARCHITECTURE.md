@@ -12,14 +12,16 @@ Railway edge (HTTPS)
 │                                                             │  shell) with workspaces on /paperclip                │
 └─────────────────────────────────────────────────────────────┼──────────────────────────────────────────────────────┘
                                                               ▼  private network
-                                                        db: PostgreSQL 18
+                                         db: PostgreSQL 18         storage: RustFS (S3 API :9000, bucket "paperclip")
 ```
 
 ## Start-up order
 
+0. `storage` (RustFS) prepares `/data/rustfs` on its root-owned volume and drops to its own user.
 1. `start.sh` (root) validates the inputs and runs upstream's `docker-entrypoint.sh`, which fixes ownership of the
    `/paperclip` volume and drops to `node`.
-2. `supervisor.sh` starts Paperclip on loopback with `PAPERCLIP_MIGRATION_AUTO_APPLY=true` and waits for
+2. `supervisor.sh` runs `ensure-bucket.mjs` (waits for RustFS, creates the `paperclip` bucket if missing; Paperclip
+   does not create it), then starts Paperclip on loopback with `PAPERCLIP_MIGRATION_AUTO_APPLY=true` and waits for
    `/api/health`. The first start applies ~280 migrations.
 3. `bootstrap-owner.mjs` runs if no instance admin exists: Better Auth sign-up (or sign-in, if a previous start
    created the account), a one-time `bootstrap_ceo` invite written exactly like `paperclipai auth bootstrap-ceo`,

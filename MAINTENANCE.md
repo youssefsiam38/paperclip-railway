@@ -2,7 +2,8 @@
 
 ## Releasing a new version
 
-1. **Bump the pins** (see `UPSTREAM.md`): `ARG PAPERCLIP_IMAGE` in `images/paperclip/Dockerfile`, `UPSTREAM.md`.
+1. **Bump the pins** (see `UPSTREAM.md`): `ARG PAPERCLIP_IMAGE` in `images/paperclip/Dockerfile`, `ARG RUSTFS_IMAGE`
+   in `images/storage/Dockerfile`, `UPSTREAM.md`.
    Re-read the "upstream contracts" table against the new release's diff (`server/src/routes/access.ts`,
    `server/src/config.ts`, `cli/src/commands/auth-bootstrap-ceo.ts`).
 2. **Run the tests locally.**
@@ -11,7 +12,7 @@
    tests/static.sh && tests/smoke.sh && tests/persistence.sh
    ```
 3. **Tag and push.** `git tag vX.Y.Z && git push --tags`. The `publish-image` workflow re-runs the tests against
-   the candidate and pushes `:X.Y.Z`, `:X.Y` and `:latest` to GHCR.
+   the candidates and pushes `paperclip-railway` and `paperclip-railway-storage` as `:X.Y.Z`, `:X.Y` and `:latest`.
 4. **Update the template** image tag (see `RAILWAY_TEMPLATE.md`), deploy it into a scratch project and run
    `tests/railway-smoke.sh` against it before announcing.
 
@@ -32,4 +33,6 @@ workspace, used with `_audit/tplkit.py`. Volumes, domains and health checks are 
   port, which breaks auth origins behind a proxy. The local stack uses `paperclip.test`; Railway domains are fine.
 - **Better Auth rate limiting needs a single-IP `X-Forwarded-For`.** Keep `header_up X-Forwarded-For {client_ip}`
   in the Caddyfile.
+- **Paperclip does not create its S3 bucket.** `ensure-bucket.mjs` does, before Paperclip starts.
+- **RustFS must bind `[::]`.** Railway's private network is IPv6-only.
 - **`ADMIN_PASSWORD` is only the initial password.** Once an instance admin exists, the bootstrap does nothing.

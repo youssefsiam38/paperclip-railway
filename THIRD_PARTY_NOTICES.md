@@ -12,6 +12,11 @@ files are MIT (see `LICENSE`).
   under its own terms; their use with a provider account is governed by that provider's terms.
 - `assets/icon.png` is Paperclip's app icon from the upstream repository (`ui/public/android-chrome-512x512.png`).
 
+## RustFS
+
+- Source: https://github.com/rustfs/rustfs, licence Apache-2.0 (`licenses/RUSTFS-LICENSE`). The official image is
+  used unmodified; the wrapper adds `su-exec` and a start-up script that prepares the volume.
+
 ## Caddy
 
 - Source: https://github.com/caddyserver/caddy, licence Apache-2.0. The official binary is copied unmodified.

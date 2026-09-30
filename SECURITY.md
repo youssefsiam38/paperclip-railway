@@ -11,9 +11,12 @@
 ## Trust boundaries
 
 - **Only Caddy listens on the network.** Paperclip binds `127.0.0.1:3101` and the sign-up gate `127.0.0.1:3102`.
-- **PostgreSQL** has no public domain; it is reachable only over Railway's private network.
+- **PostgreSQL and RustFS** have no public domain; they are reachable only over Railway's private network. Files
+  are streamed to browsers through Paperclip's authenticated API, never from the bucket directly.
 - **Agents run inside the `paperclip` container** as the `node` user, with the same filesystem, network and
-  environment access as the server (including the provider keys you set). Railway provides no nested sandbox.
+  environment access as the server. Paperclip hands agent processes its own environment minus `PAPERCLIP_*`
+  variables, so agents can read `DATABASE_URL`, `BETTER_AUTH_SECRET`, the storage keys and your provider keys
+  (the template keeps `ADMIN_*` out of it). Railway provides no nested sandbox.
   Anyone who can make an agent run arbitrary commands (an admin, or someone with agent-management permissions in a
   company) effectively has a shell on the service. Grant those permissions accordingly. For isolation, use one of
   Paperclip's remote sandbox providers (external services, not configured here).

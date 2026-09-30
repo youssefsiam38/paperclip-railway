@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # Railway start-up, second stage (runs as `node`). Order matters:
+#   0. with S3 storage, the bucket is created if missing
 #   1. Paperclip starts on 127.0.0.1:$PAPERCLIP_INTERNAL_PORT (nothing is reachable from outside yet)
 #   2. the owner is seeded and made instance admin
 #   3. the signup gate and Caddy start; only now does $PORT answer, so nobody can race the owner
@@ -22,9 +23,14 @@ trap 'shutdown; exit 143' TERM INT
 
 cd /app
 
+if [ "${PAPERCLIP_STORAGE_PROVIDER:-local_disk}" = "s3" ]; then
+  node "$RAILWAY_DIR/ensure-bucket.mjs" || { log "object storage is not usable; not starting"; exit 1; }
+fi
+
 # Paperclip always has Better Auth sign-up enabled; who may sign up is decided by the gate in front of it.
 # PAPERCLIP_BIND=loopback keeps it off every non-loopback interface regardless of what HOST Railway injects.
-env HOST=127.0.0.1 PAPERCLIP_BIND=loopback PORT="$INTERNAL_PORT" PAPERCLIP_AUTH_DISABLE_SIGN_UP=false \
+# ADMIN_* stay out of its environment: Paperclip passes its environment on to agent processes.
+env -u ADMIN_EMAIL -u ADMIN_PASSWORD -u ADMIN_NAME HOST=127.0.0.1 PAPERCLIP_BIND=loopback PORT="$INTERNAL_PORT" PAPERCLIP_AUTH_DISABLE_SIGN_UP=false \
   node --import ./server/node_modules/tsx/dist/loader.mjs server/dist/index.js &
 app_pid=$!
 pids+=("$app_pid")

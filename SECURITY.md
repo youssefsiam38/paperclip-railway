@@ -6,6 +6,7 @@
 |---|---|
 | Fresh `authenticated` instance: the first person to sign up can claim it (`private` mode), or the owner has to run a CLI command in the container and copy an invite from the logs (`public` mode). | The owner is created from `ADMIN_EMAIL` / generated `ADMIN_PASSWORD` and made instance admin through Paperclip's own bootstrap-invite flow **before** the public port opens. Browser claiming is disabled (`public` exposure). |
 | Better Auth sign-up is open to anyone. `PAPERCLIP_AUTH_DISABLE_SIGN_UP=true` closes it, but also breaks invitation links (invitees sign up on the invite page). | A Caddy `forward_auth` gate allows `POST /api/auth/sign-up*` only when the request comes from `/invite/<token>` and Paperclip reports that invite as live, unused and open to humans. `closed` and `open` modes are available. |
+| Better Auth trusts only the origin of the public URL read at start; after a Railway domain rename (no redeploy) every sign-in fails with "Invalid origin". | Caddy presents a request whose `Origin` equals its own `Host` (same-origin by definition; Railway only routes the service's own domains) as the configured origin. Cross-site origins are untouched and still refused. |
 | Behind Railway's proxy, Better Auth sees no usable client IP and rate-limits every visitor from one shared bucket, so one client can lock everyone out of sign-in. | Caddy forwards a single resolved client IP (`X-Forwarded-For`), so rate limits are per client. |
 
 ## Trust boundaries

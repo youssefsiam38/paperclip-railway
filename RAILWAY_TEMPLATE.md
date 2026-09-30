@@ -39,7 +39,7 @@ GHCR packages record the digests.
 
 | Field | Value |
 |---|---|
-| Source | `ghcr.io/youssefsiam38/paperclip-railway-storage:1.1.0` |
+| Source | `ghcr.io/youssefsiam38/paperclip-railway-storage:1.2.0` |
 | Public domain | none |
 | Volume | `/data` |
 | Restart policy | on failure, 10 retries |
@@ -54,7 +54,7 @@ GHCR packages record the digests.
 
 | Field | Value |
 |---|---|
-| Source | `ghcr.io/youssefsiam38/paperclip-railway:1.1.0` |
+| Source | `ghcr.io/youssefsiam38/paperclip-railway:1.2.0` |
 | Public domain | target port 3100 (Caddy) |
 | Volume | `/paperclip` |
 | Healthcheck | `/api/health`, timeout from `RAILWAY_HEALTHCHECK_TIMEOUT_SEC` |

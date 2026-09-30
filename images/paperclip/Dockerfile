@@ -29,7 +29,7 @@ COPY --from=caddy /usr/bin/caddy /usr/local/bin/caddy
 COPY images/paperclip/railway/ /opt/paperclip-railway/
 RUN chmod 0755 /opt/paperclip-railway/start.sh /opt/paperclip-railway/supervisor.sh \
   && chmod 0644 /opt/paperclip-railway/*.mjs /opt/paperclip-railway/Caddyfile \
-  && PORT=3100 PAPERCLIP_INTERNAL_PORT=3101 PAPERCLIP_GATE_PORT=3102 \
+  && PORT=3100 PAPERCLIP_INTERNAL_PORT=3101 PAPERCLIP_GATE_PORT=3102 PAPERCLIP_PUBLIC_ORIGIN=https://example.com \
      caddy validate --adapter caddyfile --config /opt/paperclip-railway/Caddyfile
 
 # Internet-facing defaults. Paperclip itself listens on 127.0.0.1:$PAPERCLIP_INTERNAL_PORT; only Caddy is public.

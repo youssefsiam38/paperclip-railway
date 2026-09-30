@@ -33,6 +33,9 @@ workspace, used with `_audit/tplkit.py`. Volumes, domains and health checks are 
   port, which breaks auth origins behind a proxy. The local stack uses `paperclip.test`; Railway domains are fine.
 - **Better Auth rate limiting needs a single-IP `X-Forwarded-For`.** Keep `header_up X-Forwarded-For {client_ip}`
   in the Caddyfile.
+- **Domain renames don't redeploy.** `${{RAILWAY_PUBLIC_DOMAIN}}` is resolved at deploy time. The Caddyfile's
+  same-origin rewrite keeps sign-in working; links and agent URLs need a redeploy. Use `{http.request.hostport}`
+  (not `host`) in that matcher, or origins with a port never match.
 - **Paperclip does not create its S3 bucket.** `ensure-bucket.mjs` does, before Paperclip starts.
 - **RustFS must bind `[::]`.** Railway's private network is IPv6-only.
 - **`ADMIN_PASSWORD` is only the initial password.** Once an instance admin exists, the bootstrap does nothing.

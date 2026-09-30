@@ -61,7 +61,9 @@ listens on loopback behind a small Caddy front door that only adds the sign-up c
 sandbox, and Paperclip passes its server environment on to agents; treat the ability to run agents like shell
 access to the service.
 
-**Custom domain:** add it in Railway, then set `PAPERCLIP_PUBLIC_URL` to `https://your.domain`.
+**Changing the domain:** renaming the Railway domain or adding a custom one does not redeploy the service. Sign-in
+keeps working on the new domain right away, but redeploy the `paperclip` service so invite links and agent URLs
+use it. For a custom domain, set `PAPERCLIP_PUBLIC_URL` to `https://your.domain` first.
 
 Tested on a live deployment of this template: owner sign-in, refused walk-up sign-up, the full invitation flow,
 file uploads, an agent run calling back into Paperclip, and a redeploy keeping everything.

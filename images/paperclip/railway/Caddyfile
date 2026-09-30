@@ -27,6 +27,13 @@
 }
 
 :{$PORT} {
+	# Railway bakes PAPERCLIP_PUBLIC_URL at deploy time, and renaming or adding a domain does not redeploy. Better Auth
+	# then rejects every sign-in from the new domain ("Invalid origin"). A request whose Origin is its own Host is
+	# same-origin by definition (and Railway only routes this service's domains here), so present it to Paperclip as
+	# the configured origin. Cross-site origins are left untouched and still refused.
+	@same_origin_other_domain expression `{http.request.header.Origin} != "" && ({http.request.header.Origin} == "https://" + {http.request.hostport} || {http.request.header.Origin} == "http://" + {http.request.hostport}) && {http.request.header.Origin} != "{$PAPERCLIP_PUBLIC_ORIGIN}"`
+	request_header @same_origin_other_domain Origin {$PAPERCLIP_PUBLIC_ORIGIN}
+
 	# The path matcher is case-insensitive and matches the unescaped path, so /API/Auth/Sign-Up%2Femail is covered.
 	@signup path /api/auth/sign-up*
 	handle @signup {

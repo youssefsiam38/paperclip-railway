@@ -68,6 +68,8 @@ caddy_line=$(grep -n '^caddy run' "$sup" | head -1 | cut -d: -f1)
 if [ -n "$boot_line" ] && [ -n "$caddy_line" ] && [ "$boot_line" -lt "$caddy_line" ]; then pass "owner bootstrap runs before Caddy listens"; else fail "owner bootstrap must run before Caddy"; fi
 assert_contains "every sign-up path is gated" '@signup path /api/auth/sign-up\*' "$(cat "$cf")"
 assert_contains "the gate is a forward_auth" 'forward_auth 127.0.0.1:{$PAPERCLIP_GATE_PORT}' "$(cat "$cf")"
+assert_contains "same-origin requests from another domain are normalized" 'request_header @same_origin_other_domain Origin {$PAPERCLIP_PUBLIC_ORIGIN}' "$(cat "$cf")"
+assert_contains "the same-origin check compares Origin with the request host:port" '"https://" + {http.request.hostport}' "$(cat "$cf")"
 assert_contains "the admin API is off" 'admin off' "$(cat "$cf")"
 
 section "secrets hygiene"

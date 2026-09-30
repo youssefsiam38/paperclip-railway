@@ -37,6 +37,12 @@ To let agents run, add a provider key to the `paperclip` service: `ANTHROPIC_API
 (Claude Code), `OPENAI_API_KEY` (Codex), `GEMINI_API_KEY` (Gemini CLI). Keys can also be stored per agent inside
 Paperclip as company secrets.
 
+**Changing the domain.** Renaming the Railway domain or adding a custom one does not redeploy the service, and
+Paperclip reads its public URL only at start. Sign-in keeps working on the new domain straight away (the front door
+accepts same-origin requests from any domain of the service), but invite links, agent callback URLs and webhook
+URLs keep the old address until you **redeploy the `paperclip` service**. For a custom domain, also set
+`PAPERCLIP_PUBLIC_URL` to `https://your.domain` before redeploying.
+
 To add teammates: **Company settings → Invites**, create a human invite and send the link. The invitee creates
 their account on that page.
 

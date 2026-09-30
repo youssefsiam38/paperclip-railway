@@ -25,6 +25,8 @@
 - **Invite-only sign-up that keeps invitations working.** A Caddy `forward_auth` gate admits
   `/api/auth/sign-up*` only from a live, unused, human invite. Path variants (case, `%2F`, `//`, `/./`), forged
   referers, used, revoked and agent-only invites are all refused in the tests.
+- **Domain changes don't lock users out**: same-origin requests from any domain of the service are accepted
+  (rename/custom domain before a redeploy); cross-site origins are still refused (tested).
 - **Per-client auth rate limiting** behind Railway's proxy (single-IP `X-Forwarded-For`).
 - **Generated secrets**: owner password, Better Auth secret, agent JWT secret, tool-action signing secret, secrets
   master key, PostgreSQL password. None in images or the repository; tests never print them.
@@ -34,9 +36,9 @@
 
 ## Tests
 
-- `tests/static.sh` (42): syntax, shellcheck, compose shape, digest pins, bind addresses, start-up order, gate
+- `tests/static.sh` (44): syntax, shellcheck, compose shape, digest pins, bind addresses, start-up order, gate
   coverage, secret scan.
-- `tests/smoke.sh` (49): front door, loopback-only internals, owner bootstrap, bucket creation, sign-up gate and
+- `tests/smoke.sh` (54): front door, loopback-only internals, owner bootstrap, bucket creation, sign-up gate and
   bypass attempts, invitation flow, instance-admin powers, attachments stored in RustFS (not on the app volume), a `process` agent calling the API with its
   injected key, the bundled agent CLIs, restart idempotency, `closed` mode.
 - `tests/persistence.sh` (6): company, attachment and owner survive recreating every service.

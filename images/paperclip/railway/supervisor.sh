@@ -56,6 +56,10 @@ if ! node "$RAILWAY_DIR/bootstrap-owner.mjs"; then
   shutdown; exit 1
 fi
 
+# Origin (scheme://host[:port]) of the configured public URL, for the Caddyfile's same-origin rewrite.
+PAPERCLIP_PUBLIC_ORIGIN=$(node -e 'process.stdout.write(new URL(process.env.PAPERCLIP_PUBLIC_URL).origin)')
+export PAPERCLIP_PUBLIC_ORIGIN
+
 node "$RAILWAY_DIR/signup-gate.mjs" &
 pids+=("$!")
 caddy run --adapter caddyfile --config "$RAILWAY_DIR/Caddyfile" &

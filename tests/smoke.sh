@@ -125,6 +125,31 @@ for cli in claude codex opencode gemini; do
   if compose exec -T paperclip gosu node sh -c "command -v $cli" >/dev/null 2>&1; then pass "the $cli CLI is installed for local adapters"; else fail "the $cli CLI is missing"; fi
 done
 
+section "domain changed without a redeploy"
+# Railway bakes PAPERCLIP_PUBLIC_URL at deploy time; renaming or adding a domain does not redeploy. The front door
+# must keep same-origin requests from another domain of this service working, and still refuse cross-site ones.
+port=${APP_URL##*:}
+other() { curl -s -o "$TEST_TMP/body" -w '%{http_code}' --max-time 30 --resolve "renamed.test:$port:127.0.0.1" "$@" || true; }
+RENAMED=$TEST_TMP/renamed.jar; rm -f "$RENAMED"
+# Better Auth rate-limits sign-in per client; the earlier sections already used this client's allowance.
+for _ in 1 2 3 4 5 6; do
+  code=$(other -c "$RENAMED" -X POST "http://renamed.test:$port/api/auth/sign-in/email" -H "Origin: http://renamed.test:$port" \
+    -H 'Content-Type: application/json' --data "$(jq -nc --arg e "$OWNER_EMAIL" --arg p "$OWNER_PASSWORD" '{email:$e, password:$p}')")
+  [ "$code" = "429" ] || break
+  sleep 5
+done
+assert_eq "the owner signs in on a renamed domain" "200" "$code"
+code=$(other -b "$RENAMED" -X POST "http://renamed.test:$port/api/companies" -H "Origin: http://renamed.test:$port" \
+  -H 'Content-Type: application/json' --data '{"name":"Renamed domain co"}')
+assert_eq "board mutations work on the renamed domain" "201" "$code"
+for o in "https://evil.test" "http://renamed.test:$port.evil.test"; do
+  code=$(other -b 'x=1' -X POST "http://renamed.test:$port/api/auth/sign-out" -H "Origin: $o" -H 'Content-Type: application/json' --data '{}')
+  assert_eq "a cross-site origin ($o) is still refused" "403" "$code"
+done
+code=$(curl -s -o /dev/null -w '%{http_code}' "${CURL_EXTRA[@]}" -b 'x=1' -X POST "$APP_URL/api/auth/sign-out" \
+  -H "Origin: http://renamed.test:$port" -H 'Content-Type: application/json' --data '{}' || true)
+assert_eq "another domain's origin on the configured host is refused" "403" "$code"
+
 section "restart"
 compose restart paperclip >/dev/null 2>&1
 wait_for_code "$APP_URL/api/health" 200 || die "Paperclip did not come back after a restart"
